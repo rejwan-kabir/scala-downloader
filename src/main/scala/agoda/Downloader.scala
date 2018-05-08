@@ -39,23 +39,17 @@ object Downloader extends App {
     file
   }
 
-  /*
-  urls.map(u => Future(fetch(u))).foreach(_.onComplete {
+  val futureList: List[Future[File]] = urls.map(u => Future(fetch(u)))
+  futureList.foreach(_.onComplete {
     case Success(file) => println(file.getAbsolutePath + " completed")
     case Failure(ex) => println("exception on download in " + ex.getMessage)
   })
+  /*
+  val futureSeq = Future.sequence(futureList)
+  futureSeq.onComplete {
+    case Success(_) => println("All downloads completed")
+    case Failure(e) => println("Exception happened in " + e.getMessage)
+  }
   */
-
-  Future {
-    for(i <- 1 to 10) {
-      print("A")
-      Thread.sleep(1000)
-    }
-  }
-  Future {
-    for(i <- 1 to 10) {
-      print("B")
-      Thread.sleep(1000)
-    }
-  }
+  Thread.sleep(120000)
 }
