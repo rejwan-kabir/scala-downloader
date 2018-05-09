@@ -4,7 +4,8 @@ import java.io.{BufferedOutputStream, File, FileOutputStream}
 import java.net.{HttpURLConnection, URL}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success}
 
 object Downloader extends App {
@@ -21,6 +22,7 @@ object Downloader extends App {
     "https://i.pinimg.com/564x/70/6c/bd/706cbd9f15223e48168941f89aefff22.jpg")
 
   def fetch(urlString: String)(implicit destination: Destination): File = {
+    println("Processing : " + urlString)
     val fileName = urlString.substring(urlString.lastIndexOf('/') + 1)
     val file = new File(destination + fileName)
     val connection = new URL(urlString).openConnection.asInstanceOf[HttpURLConnection]
@@ -44,12 +46,12 @@ object Downloader extends App {
     case Success(file) => println(file.getAbsolutePath + " completed")
     case Failure(ex) => println("exception on download in " + ex.getMessage)
   })
-  /*
+
   val futureSeq = Future.sequence(futureList)
   futureSeq.onComplete {
     case Success(_) => println("All downloads completed")
     case Failure(e) => println("Exception happened in " + e.getMessage)
   }
-  */
-  Thread.sleep(120000)
+
+  Await.ready(futureSeq, Duration.Inf)
 }
