@@ -3,8 +3,8 @@ package agoda
 import java.io._
 import java.net.{HttpURLConnection, URL}
 import java.nio.channels.FileChannel
+import java.nio.file.Paths
 import java.nio.file.StandardOpenOption._
-import java.nio.file.{Files, Paths}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -14,7 +14,6 @@ import scala.util.{Failure, Success}
 object Downloader extends App {
   type FilePath = String
   implicit val destination: FilePath = "/home/rejwan/TEMP/"
-  val tempDir = destination // System.getProperty("java.io.tmpdir", "/tmp")
   val readChunk = 16 * 1024
 
   val urls = List(
@@ -47,17 +46,17 @@ object Downloader extends App {
       val stream = fromInputStream(in, readChunk)
       stream.zipWithIndex.map {
         case (data: Array[Byte], i: Int) =>
-          val file = new File(tempDir + fileName + "_" + i)
+          val file = File.createTempFile(fileName, s"_$i")
           val intermediate = new BufferedOutputStream(new FileOutputStream(file))
           intermediate.write(data)
           intermediate.flush()
           intermediate.close()
-          tempDir + fileName + "_" + i
+          file.deleteOnExit()
+          file.getAbsolutePath
       }.foreach(filePath => {
         val in = FileChannel.open(Paths.get(filePath), READ)
         in.transferTo(0, in.size, out)
         in.close()
-        Files.delete(Paths.get(filePath))
       })
     } finally {
       out.close()
