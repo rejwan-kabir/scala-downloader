@@ -21,7 +21,11 @@ object Downloader extends App {
   implicit val destination: FilePath = if (args(1).endsWith("/")) args(1) else args + "/"
   val readChunk = 16 * 1024
   //val urls = args(0).split(',').toList
-  val urls = List("sftp://rejwan:password@itcsubmit.wustl.edu:22/")
+  val urls = List(
+    "sftp://rejwan@192.168.104.37:22/home/rejwan/Dropbox/Photos/IMG_20150825_145004.jpg",
+    "sftp://rejwan@192.168.104.37:22/home/rejwan/Dropbox/Photos/IMG_20150825_144432.jpg",
+    "sftp://rejwan@192.168.104.37:22/home/rejwan/Dropbox/Photos/IMG_20150825_145034.jpg"
+  )
 
   /*
   val urls = List(
@@ -107,6 +111,7 @@ object Downloader extends App {
     val config = new Properties
     config.put("StrictHostKeyChecking", "no")
     session.setConfig(config)
+    session.setPassword("tigerit")
     session.connect()
     val channel = session.openChannel("sftp")
     channel.connect()
