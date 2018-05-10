@@ -1,11 +1,13 @@
 package agoda
 
 import java.io._
-import java.net.{HttpURLConnection, URL, URLConnection}
+import java.net.{HttpURLConnection, URI, URL}
 import java.nio.channels.FileChannel
 import java.nio.file.StandardOpenOption._
 import java.nio.file.{Files, Paths}
+import java.util.Properties
 
+import com.jcraft.jsch.JSch
 import sun.net.www.protocol.ftp.FtpURLConnection
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -18,7 +20,8 @@ object Downloader extends App {
   type FilePath = String
   implicit val destination: FilePath = if (args(1).endsWith("/")) args(1) else args + "/"
   val readChunk = 16 * 1024
-  val urls = args(0).split(',').toList
+  //val urls = args(0).split(',').toList
+  val urls = List("sftp://rejwan:password@itcsubmit.wustl.edu:22/")
 
   /*
   val urls = List(
@@ -46,11 +49,10 @@ object Downloader extends App {
     }
   }
 
-  private[this] def fetch(connection: URLConnection)(urlString: String, cleanUp: => Unit = ())(implicit destination: FilePath): File = {
+  private[this] def fetch(in: InputStream)(urlString: String, cleanUp: => Unit = ())(implicit destination: FilePath): File = {
     println("Processing : " + urlString)
     val fileName = urlString.substring(urlString.lastIndexOf('/') + 1)
     val file = new File(destination + fileName)
-    val in = connection.getInputStream
     val out = FileChannel.open(Paths.get(destination + fileName), CREATE, WRITE)
     try {
       val stream = fromInputStream(in, readChunk)
@@ -65,9 +67,9 @@ object Downloader extends App {
           file.getAbsolutePath
       }
       splitFileStream.foreach(filePath => {
-        val in = FileChannel.open(Paths.get(filePath), READ)
-        in.transferTo(0, in.size, out)
-        in.close()
+        val downloadedFile = FileChannel.open(Paths.get(filePath), READ)
+        downloadedFile.transferTo(0, downloadedFile.size, out)
+        downloadedFile.close()
       })
     } catch {
       case ex: Exception =>
@@ -76,6 +78,7 @@ object Downloader extends App {
         throw ex
     }
     finally {
+      in.close()
       if (out.isOpen)
         out.close()
       cleanUp
@@ -87,18 +90,40 @@ object Downloader extends App {
     val connection = new URL(urlString).openConnection.asInstanceOf[HttpURLConnection]
     connection.setRequestMethod("GET")
     connection.addRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)")
-    fetch(connection)(urlString, connection.disconnect())
+    fetch(connection.getInputStream)(urlString, connection.disconnect())
   }
 
   private[this] def fetchFTP(urlString: String) = {
     val connection = new URL(urlString).openConnection.asInstanceOf[FtpURLConnection]
-    fetch(connection)(urlString)
+    fetch(connection.getInputStream)(urlString)
+  }
+
+  // https://kodehelp.com/java-program-for-downloading-file-from-sftp-server/
+  private[this] def fetchSFTP(urlString: String) = {
+    val uri = new URI(urlString)
+    val jsch = new JSch
+    val session = jsch.getSession(uri.getUserInfo, uri.getHost, uri.getPort)
+    import com.jcraft.jsch.ChannelSftp
+    val config = new Properties
+    config.put("StrictHostKeyChecking", "no")
+    session.setConfig(config)
+    session.connect()
+    val channel = session.openChannel("sftp")
+    channel.connect()
+    val channelSftp = channel.asInstanceOf[ChannelSftp]
+    val (directory, fileName) = uri.getPath.splitAt(uri.getPath.lastIndexOf('/') + 1)
+    channelSftp.cd(directory)
+    fetch(channelSftp.get(fileName))(urlString, {
+      session.disconnect()
+      channel.disconnect()
+    })
   }
 
   def getProtocolConnection(urlString: String) = {
     urlString.split("://")(0) match {
       case "http" | "https" => fetchHTTP(urlString)
-      case "ftp" | "sftp" => fetchFTP(urlString)
+      case "ftp" | "ftps" => fetchFTP(urlString)
+      case "sftp" => fetchSFTP(urlString)
       case _ => throw new NoSuchElementException("Unsupported protocol")
     }
   }
@@ -110,10 +135,10 @@ object Downloader extends App {
   val futureSeq = Future.sequence(listOfFutureTry)
   listOfFutureTry.map(_.collect {
     case Success(x) => s"Successful Download : ${x.getAbsolutePath}"
-    case Failure(ex) => s"Download failed for - ${ex.getMessage}"
+    case Failure(e) => s"Download failed for - ${e.getMessage}"
   }).foreach(_.onComplete {
     case Success(x) => println(x)
-    case Failure(ex) => println(ex.getMessage)
+    case Failure(e) => println(e.getMessage)
   })
 
   Await.ready(futureSeq, Duration.Inf)
