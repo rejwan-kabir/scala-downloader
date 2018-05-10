@@ -1,10 +1,12 @@
 package agoda
 
 import java.io._
-import java.net.{HttpURLConnection, URL}
+import java.net.{HttpURLConnection, URL, URLConnection}
 import java.nio.channels.FileChannel
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption._
+
+import sun.net.www.protocol.ftp.FtpURLConnection
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -14,9 +16,10 @@ import scala.util.{Failure, Success, Try}
 // run with command line argument: https://i.pinimg.com/564x/5c/46/e4/shuvo.jpg,http://longwallpapers.com/Desktop-Wallpaper/rain-wallpapers-hd-For-Desktop-Wallpaper.jpg,https://wallpaper.wiki/wp-content/uploads/2017/06/Light-water-close-up-nature-rain-wallpapers-HD.jpg,https://i.pinimg.com/564x/2e/88/31/2e8831e90095c14437bbb866dd7cd3ec.jpg,https://i.pinimg.com/564x/5c/46/e4/5c46e4d74edf8e4c396beda8a126397f.jpg,https://i.pinimg.com/564x/5c/46/e4/imon.jpg,https://i.pinimg.com/564x/30/f9/51/30f9518869ddedf7bddd5e5a5e65d5a2.jpg,https://i.pinimg.com/564x/3c/64/db/3c64db15ff4a2351cf29634eb7c9240c.jpg,https://i.pinimg.com/564x/70/6c/bd/706cbd9f15223e48168941f89aefff22.jpg,https://i.pinimg.com/564x/5c/46/e4/arshi.jpg
 object Downloader extends App {
   type FilePath = String
-  implicit val destination: FilePath = args(1)
+  implicit val destination: FilePath = if (args(1).endsWith("/")) args(1) else args + "/"
   val readChunk = 16 * 1024
   val urls = args(0).split(',').toList
+
   /*
   val urls = List(
     "https://i.pinimg.com/564x/5c/46/e4/shuvo.jpg",
@@ -39,13 +42,10 @@ object Downloader extends App {
     }
   }
 
-  def fetch(urlString: String)(implicit destination: FilePath): File = {
+  def fetch(connection: URLConnection)(urlString: String, cleanUp: => Unit = ())(implicit destination: FilePath): File = {
     println("Processing : " + urlString)
     val fileName = urlString.substring(urlString.lastIndexOf('/') + 1)
     val file = new File(destination + fileName)
-    val connection = new URL(urlString).openConnection.asInstanceOf[HttpURLConnection]
-    connection.setRequestMethod("GET")
-    connection.addRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)")
     val in = connection.getInputStream
     val out = FileChannel.open(Paths.get(destination + fileName), CREATE, WRITE)
     try {
@@ -67,15 +67,28 @@ object Downloader extends App {
       })
     } finally {
       out.close()
-      connection.disconnect()
+      cleanUp
     }
     file
   }
 
+  def fetchHTTP(urlString: String) = {
+    val connection = new URL(urlString).openConnection.asInstanceOf[HttpURLConnection]
+    connection.setRequestMethod("GET")
+    connection.addRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)")
+    fetch(connection)(urlString, connection.disconnect())
+  }
+
+  def fetchFTP(urlString: String) = {
+    val connection = new URL(urlString).openConnection.asInstanceOf[FtpURLConnection]
+    fetch(connection)(urlString)
+  }
+
+
   def futureToFutureTry[T](f: Future[T]): Future[Try[T]] =
     f.map(x => Success(x)).recover { case ex => Failure(ex) }
 
-  val listOfFutureTry: List[Future[Try[File]]] = urls.map(u => futureToFutureTry(Future(fetch(u))))
+  val listOfFutureTry: List[Future[Try[File]]] = urls.map(u => futureToFutureTry(Future(fetchHTTP(u))))
   val futureSeq = Future.sequence(listOfFutureTry)
   listOfFutureTry.map(_.collect {
     case Success(x) => s"Successful Download : ${x.getAbsolutePath}"
