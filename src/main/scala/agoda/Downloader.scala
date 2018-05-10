@@ -54,7 +54,7 @@ object Downloader extends App {
     val out = FileChannel.open(Paths.get(destination + fileName), CREATE, WRITE)
     try {
       val stream = fromInputStream(in, readChunk)
-      val splitFileList = stream.zipWithIndex.map {
+      val splitFileStream = stream.zipWithIndex.map {
         case (data: Array[Byte], i: Int) =>
           val file = File.createTempFile(fileName, s"_$i")
           val intermediate = new BufferedOutputStream(new FileOutputStream(file))
@@ -63,8 +63,8 @@ object Downloader extends App {
           intermediate.close()
           file.deleteOnExit()
           file.getAbsolutePath
-      }.toList
-      splitFileList.foreach(filePath => {
+      }
+      splitFileStream.foreach(filePath => {
         val in = FileChannel.open(Paths.get(filePath), READ)
         in.transferTo(0, in.size, out)
         in.close()
