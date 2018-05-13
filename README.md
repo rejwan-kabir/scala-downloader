@@ -3,7 +3,7 @@
 The command to run the downloader is
 
 ```$xslt
-sbt "runmain demo.Downloader <url-list> <download-directory-path>"
+sbt "runMain demo.Downloader <url-list> <download-directory-path>"
 ```
 
 url-list may contain `http`, `https`, `ftp`, `ftps`, `sftp` files. Multiple URL must be separated with a comma.

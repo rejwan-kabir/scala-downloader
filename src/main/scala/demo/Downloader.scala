@@ -18,7 +18,7 @@ import scala.util.{Failure, Success, Try}
 object Downloader extends App {
   if (args.length != 2) {
     println("usage : <main-class> <url-list> <download-directory-path>")
-    System.exit(0)
+    System.exit(1)
   }
 
   type FilePath = String
