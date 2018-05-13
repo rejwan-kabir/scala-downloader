@@ -2,9 +2,8 @@ import java.io._
 import java.net.UnknownHostException
 
 import demo.Downloader._
+import org.apache.commons.io.FileUtils
 import org.scalatest.{FlatSpec, Matchers}
-
-import scala.io.Source
 
 class DownloaderTest extends FlatSpec with Matchers {
   "unknown protocol" should "throw NoSuchElementException" in {
@@ -14,16 +13,22 @@ class DownloaderTest extends FlatSpec with Matchers {
     assert(exp.getMessage == "Unsupported protocol")
   }
 
-  "testFile.txt" should "be found and matched" in {
-    def equal(src: File, dest: File): Boolean = {
-      Source.fromFile(src).getLines().zipAll(Source.fromFile(dest).getLines(), "src", "dest").forall {
-        case (srcLine: String, destLine: String) => srcLine == destLine
-      }
-    }
-
+  "text files" should "be found and matched" in {
     val inputFile = new File("src/test/resource/source/testFile.txt")
     val outputFile = fetch(new BufferedInputStream(new FileInputStream(inputFile)))("src/test/resource/source/testFile.txt")("src/test/resource/destination/")
-    assert(equal(inputFile, outputFile))
+    assert(FileUtils.contentEquals(inputFile, outputFile))
+  }
+
+  "image files" should "be found and matched" in {
+    val inputFile = new File("src/test/resource/source/Rain.jpg")
+    val outputFile = fetch(new BufferedInputStream(new FileInputStream(inputFile)))("src/test/resource/source/Rain.jpg")("src/test/resource/destination/")
+    assert(FileUtils.contentEquals(inputFile, outputFile))
+  }
+
+  "zipped files" should "be found and matched" in {
+    val inputFile = new File("src/test/resource/source/zipped.tar.gz")
+    val outputFile = fetch(new BufferedInputStream(new FileInputStream(inputFile)))("src/test/resource/source/zipped.tar.gz")("src/test/resource/destination/")
+    assert(FileUtils.contentEquals(inputFile, outputFile))
   }
 
   "garbage url" should "throw UnKnownHostException" in {
