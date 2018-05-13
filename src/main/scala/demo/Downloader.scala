@@ -124,6 +124,7 @@ object Downloader extends App {
   def futureToFutureTry[T](f: Future[T]): Future[Try[T]] =
     f.map(x => Success(x)).recover { case ex => Failure(ex) }
 
+  Files.createDirectory(Paths.get(destination))
   val listOfFutureTry: List[Future[Try[File]]] = urls.map(u => futureToFutureTry(Future(getProtocolConnection(u))))
   val futureSeq = Future.sequence(listOfFutureTry)
   listOfFutureTry.map(_.collect {
