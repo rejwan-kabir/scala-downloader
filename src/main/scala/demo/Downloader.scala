@@ -21,32 +21,33 @@ object Downloader extends App {
     println("usage : <main-class> <url-list> <download-directory-path>")
     System.exit(0)
   }
-  
+
   type FilePath = String
   implicit val destination: FilePath = if (args(1).endsWith("/")) args(1) else args + "/"
-  val readChunk = 16 * 1024
   val urls = args(0).split(',').toList
 
+  def readChunk = 16 * 1024
+
   /*
-  val urls = List(
-    "https://i.pinimg.com/564x/5c/46/e4/shuvo.jpg",
-    "ftp://speedtest.tele2.net/512KB.zip",
-    "sftp://rejwan:amishuvo@localhost:22/home/rejwan/Dropbox/Photos/IMG_20150825_145004.jpg",
-    "http://longwallpapers.com/Desktop-Wallpaper/rain-wallpapers-hd-For-Desktop-Wallpaper.jpg",
-    "ftp://speedtest.tele2.net/2MB.zip",
-    "https://wallpaper.wiki/wp-content/uploads/2017/06/Light-water-close-up-nature-rain-wallpapers-HD.jpg",
-    "sftp://rejwan:amishuvo@localhost:22/home/rejwan/Dropbox/Photos/IMG_20150825_144432.jpg",
-    "https://i.pinimg.com/564x/2e/88/31/2e8831e90095c14437bbb866dd7cd3ec.jpg",
-    "ftp://speedtest.tele2.net/3MB.zip",
-    "https://i.pinimg.com/564x/5c/46/e4/5c46e4d74edf8e4c396beda8a126397f.jpg",
-    "https://i.pinimg.com/564x/5c/46/e4/imon.jpg",
-    "ftp://speedtest.tele2.net/5MB.zip",
-    "https://i.pinimg.com/564x/30/f9/51/30f9518869ddedf7bddd5e5a5e65d5a2.jpg",
-    "https://i.pinimg.com/564x/3c/64/db/3c64db15ff4a2351cf29634eb7c9240c.jpg",
-    "sftp://rejwan:amishuvo@localhost:22/home/rejwan/Dropbox/Photos/IMG_20150825_145034.jpg",
-    "https://i.pinimg.com/564x/70/6c/bd/706cbd9f15223e48168941f89aefff22.jpg",
-    "https://i.pinimg.com/564x/5c/46/e4/arshi.jpg"
-  )
+    val urls = List(
+      "https://i.pinimg.com/564x/5c/46/e4/shuvo.jpg",
+      "ftp://speedtest.tele2.net/512KB.zip",
+      "sftp://rejwan:amishuvo@localhost:22/home/rejwan/Dropbox/Photos/IMG_20150825_145004.jpg",
+      "http://longwallpapers.com/Desktop-Wallpaper/rain-wallpapers-hd-For-Desktop-Wallpaper.jpg",
+      "ftp://speedtest.tele2.net/2MB.zip",
+      "https://wallpaper.wiki/wp-content/uploads/2017/06/Light-water-close-up-nature-rain-wallpapers-HD.jpg",
+      "sftp://rejwan:amishuvo@localhost:22/home/rejwan/Dropbox/Photos/IMG_20150825_144432.jpg",
+      "https://i.pinimg.com/564x/2e/88/31/2e8831e90095c14437bbb866dd7cd3ec.jpg",
+      "ftp://speedtest.tele2.net/3MB.zip",
+      "https://i.pinimg.com/564x/5c/46/e4/5c46e4d74edf8e4c396beda8a126397f.jpg",
+      "https://i.pinimg.com/564x/5c/46/e4/imon.jpg",
+      "ftp://speedtest.tele2.net/5MB.zip",
+      "https://i.pinimg.com/564x/30/f9/51/30f9518869ddedf7bddd5e5a5e65d5a2.jpg",
+      "https://i.pinimg.com/564x/3c/64/db/3c64db15ff4a2351cf29634eb7c9240c.jpg",
+      "sftp://rejwan:tigerit@localhost:22/home/rejwan/testFile.txt",
+      "https://i.pinimg.com/564x/70/6c/bd/706cbd9f15223e48168941f89aefff22.jpg",
+      "https://i.pinimg.com/564x/5c/46/e4/arshi.jpg"
+    )
   */
   def fromInputStream(in: InputStream, bufferSize: Int): Stream[Array[Byte]] = {
     val buffer = new Array[Byte](bufferSize)
@@ -56,7 +57,7 @@ object Downloader extends App {
     }
   }
 
-  private[this] def fetch(in: InputStream)(urlString: String, cleanUp: => Unit = ())(implicit destination: FilePath): File = {
+  def fetch(in: InputStream)(urlString: String, cleanUp: => Unit = ())(implicit destination: FilePath): File = {
     val fileName = urlString.substring(urlString.lastIndexOf('/') + 1)
     val file = new File(destination + fileName)
     val out = FileChannel.open(Paths.get(destination + fileName), CREATE, WRITE)
