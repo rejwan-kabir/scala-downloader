@@ -25,6 +25,7 @@ object Downloader extends App {
   type FilePath = String
   implicit val destination: FilePath = if (args(1).endsWith("/")) args(1) else args + "/"
   val urls = args(0).split(',').toList
+  val timeout = 30 * 1000 // 30s
 
   def readChunk = 16 * 1024
 
@@ -57,7 +58,7 @@ object Downloader extends App {
     }
   }
 
-  def fetch(in: InputStream)(urlString: String, cleanUp: => Unit = ())(implicit destination: FilePath): File = {
+  def fetch(in: InputStream)(urlString: String, cleanUp: => Unit = ())(destination: FilePath): File = {
     val fileName = urlString.substring(urlString.lastIndexOf('/') + 1)
     val file = new File(destination + fileName)
     val out = FileChannel.open(Paths.get(destination + fileName), CREATE, WRITE)
@@ -93,23 +94,23 @@ object Downloader extends App {
     file
   }
 
-  private[this] def fetchHTTP(urlString: String) = {
+  def fetchHTTP(urlString: String): FilePath => File = {
     val connection = new URL(urlString).openConnection.asInstanceOf[HttpURLConnection]
     connection.setRequestMethod("GET")
     connection.addRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)")
-    connection.setConnectTimeout(30000)
-    connection.setReadTimeout(30000)
+    connection.setConnectTimeout(timeout)
+    connection.setReadTimeout(timeout)
     fetch(connection.getInputStream)(urlString, connection.disconnect())
   }
 
-  private[this] def fetchFTP(urlString: String) = {
+  def fetchFTP(urlString: String): FilePath => File = {
     val connection = new URL(urlString).openConnection.asInstanceOf[FtpURLConnection]
-    connection.setConnectTimeout(30000)
-    connection.setReadTimeout(30000)
+    connection.setConnectTimeout(timeout)
+    connection.setReadTimeout(timeout)
     fetch(connection.getInputStream)(urlString)
   }
 
-  private[this] def fetchSFTP(urlString: String) = {
+  def fetchSFTP(urlString: String): FilePath => File = {
     val uri = new URI(urlString)
     val jsch = new JSch
     val Array(user, password) = uri.getUserInfo.split(":")
@@ -120,7 +121,7 @@ object Downloader extends App {
     session.setConfig(config)
     session.setPassword(password)
     session.connect()
-    session.setTimeout(30000)
+    session.setTimeout(timeout)
     val channel = session.openChannel("sftp")
     channel.connect()
     val channelSftp = channel.asInstanceOf[ChannelSftp]
@@ -132,12 +133,12 @@ object Downloader extends App {
     })
   }
 
-  def getProtocolConnection(urlString: String) = {
+  def getProtocolConnection(urlString: String)(implicit destination: FilePath): File = {
     println("Processing : " + urlString)
     urlString.split("://")(0) match {
-      case "http" | "https" => fetchHTTP(urlString)
-      case "ftp" | "ftps" => fetchFTP(urlString)
-      case "sftp" => fetchSFTP(urlString)
+      case "http" | "https" => fetchHTTP(urlString)(destination)
+      case "ftp" | "ftps" => fetchFTP(urlString)(destination)
+      case "sftp" => fetchSFTP(urlString)(destination)
       case _ => throw new NoSuchElementException("Unsupported protocol")
     }
   }
@@ -149,7 +150,10 @@ object Downloader extends App {
   val futureSeq = Future.sequence(listOfFutureTry)
   listOfFutureTry.map(_.collect {
     case Success(x) => s"Successful Download : ${x.getAbsolutePath}"
-    case Failure(e) => s"Download failed for - ${e.getMessage}"
+    case Failure(e) => {
+      println("to catch")
+      s"Download failed for - ${e.getMessage}"
+    }
   }).foreach(_.onComplete {
     case Success(x) => println(x)
     case Failure(e) => println(e.getMessage)
