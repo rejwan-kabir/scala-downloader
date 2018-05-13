@@ -15,7 +15,6 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 
-// run with command line argument: https://i.pinimg.com/564x/5c/46/e4/shuvo.jpg,ftp://speedtest.tele2.net/512KB.zip,sftp://rejwan:amishuvo@localhost:22/home/rejwan/Dropbox/Photos/IMG_20150825_145004.jpg,http://longwallpapers.com/Desktop-Wallpaper/rain-wallpapers-hd-For-Desktop-Wallpaper.jpg,ftp://speedtest.tele2.net/2MB.zip,https://wallpaper.wiki/wp-content/uploads/2017/06/Light-water-close-up-nature-rain-wallpapers-HD.jpg,sftp://rejwan:amishuvo@localhost:22/home/rejwan/Dropbox/Photos/IMG_20150825_144432.jpg,https://i.pinimg.com/564x/2e/88/31/2e8831e90095c14437bbb866dd7cd3ec.jpg,ftp://speedtest.tele2.net/3MB.zip,https://i.pinimg.com/564x/5c/46/e4/5c46e4d74edf8e4c396beda8a126397f.jpg,https://i.pinimg.com/564x/5c/46/e4/imon.jpg,ftp://speedtest.tele2.net/5MB.zip,https://i.pinimg.com/564x/30/f9/51/30f9518869ddedf7bddd5e5a5e65d5a2.jpg,https://i.pinimg.com/564x/3c/64/db/3c64db15ff4a2351cf29634eb7c9240c.jpg,sftp://rejwan:amishuvo@localhost:22/home/rejwan/Dropbox/Photos/IMG_20150825_145034.jpg,https://i.pinimg.com/564x/70/6c/bd/706cbd9f15223e48168941f89aefff22.jpg,https://i.pinimg.com/564x/5c/46/e4/arshi.jpg
 object Downloader extends App {
   if (args.length != 2) {
     println("usage : <main-class> <url-list> <download-directory-path>")
@@ -29,27 +28,6 @@ object Downloader extends App {
 
   def readChunk = 16 * 1024
 
-  /*
-    val urls = List(
-      "https://i.pinimg.com/564x/5c/46/e4/shuvo.jpg",
-      "ftp://speedtest.tele2.net/512KB.zip",
-      "sftp://rejwan:amishuvo@localhost:22/home/rejwan/Dropbox/Photos/IMG_20150825_145004.jpg",
-      "http://longwallpapers.com/Desktop-Wallpaper/rain-wallpapers-hd-For-Desktop-Wallpaper.jpg",
-      "ftp://speedtest.tele2.net/2MB.zip",
-      "https://wallpaper.wiki/wp-content/uploads/2017/06/Light-water-close-up-nature-rain-wallpapers-HD.jpg",
-      "sftp://rejwan:amishuvo@localhost:22/home/rejwan/Dropbox/Photos/IMG_20150825_144432.jpg",
-      "https://i.pinimg.com/564x/2e/88/31/2e8831e90095c14437bbb866dd7cd3ec.jpg",
-      "ftp://speedtest.tele2.net/3MB.zip",
-      "https://i.pinimg.com/564x/5c/46/e4/5c46e4d74edf8e4c396beda8a126397f.jpg",
-      "https://i.pinimg.com/564x/5c/46/e4/imon.jpg",
-      "ftp://speedtest.tele2.net/5MB.zip",
-      "https://i.pinimg.com/564x/30/f9/51/30f9518869ddedf7bddd5e5a5e65d5a2.jpg",
-      "https://i.pinimg.com/564x/3c/64/db/3c64db15ff4a2351cf29634eb7c9240c.jpg",
-      "sftp://rejwan:tigerit@localhost:22/home/rejwan/testFile.txt",
-      "https://i.pinimg.com/564x/70/6c/bd/706cbd9f15223e48168941f89aefff22.jpg",
-      "https://i.pinimg.com/564x/5c/46/e4/arshi.jpg"
-    )
-  */
   def fromInputStream(in: InputStream, bufferSize: Int): Stream[Array[Byte]] = {
     val buffer = new Array[Byte](bufferSize)
     in.read(buffer) match {
@@ -150,10 +128,7 @@ object Downloader extends App {
   val futureSeq = Future.sequence(listOfFutureTry)
   listOfFutureTry.map(_.collect {
     case Success(x) => s"Successful Download : ${x.getAbsolutePath}"
-    case Failure(e) => {
-      println("to catch")
-      s"Download failed for - ${e.getMessage}"
-    }
+    case Failure(e) => s"Download failed for - ${e.getMessage}"
   }).foreach(_.onComplete {
     case Success(x) => println(x)
     case Failure(e) => println(e.getMessage)
