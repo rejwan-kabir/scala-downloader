@@ -22,7 +22,7 @@ object Downloader extends App {
   }
 
   type FilePath = String
-  implicit val destination: FilePath = if (args(1).endsWith("/")) args(1) else args + "/"
+  implicit val destination: FilePath = if (args(1).endsWith("/")) args(1) else args(1) + "/"
   val urls = args(0).split(',').toList
   val timeout = 30 * 1000 // 30s
 
