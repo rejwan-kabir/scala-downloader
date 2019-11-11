@@ -22,7 +22,7 @@ object Downloader extends App {
   }
 
   type FilePath = String
-  implicit val destination: FilePath = if (args(1).endsWith("/")) args(1) else args(1) + "/"
+  implicit val destination: FilePath = args(1).stripSuffix("/") + "/"
   val urls = args(0).split(',').toList
   val timeout = 30 * 1000 // 30s
 
@@ -40,6 +40,7 @@ object Downloader extends App {
     val fileName = urlString.substring(urlString.lastIndexOf('/') + 1)
     val file = new File(destination + fileName)
     val out = FileChannel.open(Paths.get(destination + fileName), CREATE, WRITE)
+
     try {
       val stream = fromInputStream(in, readChunk)
       val splitFileStream = stream.zipWithIndex.map {
@@ -95,11 +96,13 @@ object Downloader extends App {
     val session = jsch.getSession(user, uri.getHost, uri.getPort)
     import com.jcraft.jsch.ChannelSftp
     val config = new Properties
+
     config.put("StrictHostKeyChecking", "no")
     session.setConfig(config)
     session.setPassword(password)
     session.connect()
     session.setTimeout(timeout)
+
     val channel = session.openChannel("sftp")
     channel.connect()
     val channelSftp = channel.asInstanceOf[ChannelSftp]
@@ -121,13 +124,19 @@ object Downloader extends App {
     }
   }
 
-  def futureToFutureTry[T](f: Future[T]): Future[Try[T]] =
-    f.map(x => Success(x)).recover { case ex => Failure(ex) }
-
   Files.createDirectory(Paths.get(destination))
-  val listOfFutureTry: List[Future[Try[File]]] = urls.map(u => futureToFutureTry(Future(getProtocolConnection(u))))
-  val futureSeq = Future.sequence(listOfFutureTry)
-  listOfFutureTry.map(_.collect {
+  val listContent: List[Future[Try[File]]] = urls.map(u =>
+    Future(getProtocolConnection(u))
+      .map(x =>
+        Success(x)
+      )
+      .recover {
+        case ex => Failure(ex)
+      }
+  )
+  val sequenced = Future.sequence(listContent)
+
+  listContent.map(_.collect {
     case Success(x) => s"Successful Download : ${x.getAbsolutePath}"
     case Failure(e) => s"Download failed for - ${e.getMessage}"
   }).foreach(_.onComplete {
@@ -135,5 +144,5 @@ object Downloader extends App {
     case Failure(e) => println(e.getMessage)
   })
 
-  Await.ready(futureSeq, Duration.Inf)
+  Await.ready(sequenced, Duration.Inf)
 }
